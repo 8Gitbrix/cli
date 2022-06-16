@@ -52,7 +52,7 @@ func (a *App) StopCodespace(ctx context.Context, codespaceName string) error {
 		codespaceName = codespace.Name
 	} else {
 		a.StartProgressIndicatorWithLabel("Fetching codespace")
-		c, err := a.apiClient.GetCodespace(ctx, codespaceName, false)
+		c, err := a.apiClient.GetCodespace(ctx, codespaceName, "", "", false)
 		a.StopProgressIndicator()
 		if err != nil {
 			return fmt.Errorf("failed to get codespace: %q: %w", codespaceName, err)

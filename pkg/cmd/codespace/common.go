@@ -107,7 +107,7 @@ func startLiveShareSession(ctx context.Context, codespace *api.Codespace, a *App
 //go:generate moq -fmt goimports -rm -skip-ensure -out mock_api.go . apiClient
 type apiClient interface {
 	GetUser(ctx context.Context) (*api.User, error)
-	GetCodespace(ctx context.Context, name string, includeConnection bool) (*api.Codespace, error)
+	GetCodespace(ctx context.Context, name string, username string, organization string, includeConnection bool) (*api.Codespace, error)
 	ListCodespaces(ctx context.Context, limit int) ([]*api.Codespace, error)
 	DeleteCodespace(ctx context.Context, name string) error
 	StartCodespace(ctx context.Context, name string) error
@@ -252,7 +252,7 @@ func getOrChooseCodespace(ctx context.Context, apiClient apiClient, codespaceNam
 			return nil, fmt.Errorf("choosing codespace: %w", err)
 		}
 	} else {
-		codespace, err = apiClient.GetCodespace(ctx, codespaceName, true)
+		codespace, err = apiClient.GetCodespace(ctx, codespaceName, "", "", true)
 		if err != nil {
 			return nil, fmt.Errorf("getting full codespace details: %w", err)
 		}

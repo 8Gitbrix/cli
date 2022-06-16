@@ -14,11 +14,13 @@ import (
 )
 
 type deleteOptions struct {
-	deleteAll     bool
-	skipConfirm   bool
-	codespaceName string
-	repoFilter    string
-	keepDays      uint16
+	deleteAll        bool
+	skipConfirm      bool
+	codespaceName    string
+	repoFilter       string
+	organizationName string
+	username         string
+	keepDays         uint16
 
 	isInteractive bool
 	now           func() time.Time
@@ -54,6 +56,8 @@ func newDeleteCmd(app *App) *cobra.Command {
 	deleteCmd.Flags().StringVarP(&opts.repoFilter, "repo", "r", "", "Delete codespaces for a `repository`")
 	deleteCmd.Flags().BoolVarP(&opts.skipConfirm, "force", "f", false, "Skip confirmation for codespaces that contain unsaved changes")
 	deleteCmd.Flags().Uint16Var(&opts.keepDays, "days", 0, "Delete codespaces older than `N` days")
+	deleteCmd.Flags().StringVarP(&opts.organizationName, "org", "o", "", "Select organization to delete codespace from")
+	deleteCmd.Flags().StringVarP(&opts.username, "username", "u", "", "Username of user in organization to delete codespace from")
 
 	return deleteCmd
 }
@@ -78,7 +82,7 @@ func (a *App) Delete(ctx context.Context, opts deleteOptions) (err error) {
 		}
 	} else {
 		a.StartProgressIndicatorWithLabel("Fetching codespace")
-		codespace, err := a.apiClient.GetCodespace(ctx, nameFilter, false)
+		codespace, err := a.apiClient.GetCodespace(ctx, nameFilter, "", "", false)
 		a.StopProgressIndicator()
 		if err != nil {
 			return fmt.Errorf("error fetching codespace information: %w", err)

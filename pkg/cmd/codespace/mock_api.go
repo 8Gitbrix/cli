@@ -28,11 +28,8 @@ import (
 // 			EditCodespaceFunc: func(ctx context.Context, codespaceName string, params *api.EditCodespaceParams) (*api.Codespace, error) {
 // 				panic("mock out the EditCodespace method")
 // 			},
-// 			GetCodespaceFunc: func(ctx context.Context, name string, includeConnection bool) (*api.Codespace, error) {
+// 			GetCodespaceFunc: func(ctx context.Context, name string, username string, organization string, includeConnection bool) (*api.Codespace, error) {
 // 				panic("mock out the GetCodespace method")
-// 			},
-// 			GetCodespaceRegionLocationFunc: func(ctx context.Context) (string, error) {
-// 				panic("mock out the GetCodespaceRegionLocation method")
 // 			},
 // 			GetCodespaceRepoSuggestionsFunc: func(ctx context.Context, partialSearch string, params api.RepoSearchParameters) ([]string, error) {
 // 				panic("mock out the GetCodespaceRepoSuggestions method")
@@ -81,10 +78,7 @@ type apiClientMock struct {
 	EditCodespaceFunc func(ctx context.Context, codespaceName string, params *api.EditCodespaceParams) (*api.Codespace, error)
 
 	// GetCodespaceFunc mocks the GetCodespace method.
-	GetCodespaceFunc func(ctx context.Context, name string, includeConnection bool) (*api.Codespace, error)
-
-	// GetCodespaceRegionLocationFunc mocks the GetCodespaceRegionLocation method.
-	GetCodespaceRegionLocationFunc func(ctx context.Context) (string, error)
+	GetCodespaceFunc func(ctx context.Context, name string, username string, organization string, includeConnection bool) (*api.Codespace, error)
 
 	// GetCodespaceRepoSuggestionsFunc mocks the GetCodespaceRepoSuggestions method.
 	GetCodespaceRepoSuggestionsFunc func(ctx context.Context, partialSearch string, params api.RepoSearchParameters) ([]string, error)
@@ -151,13 +145,12 @@ type apiClientMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Username is the username argument value.
+			Username string
+			// Organization is the organization argument value.
+			Organization string
 			// IncludeConnection is the includeConnection argument value.
 			IncludeConnection bool
-		}
-		// GetCodespaceRegionLocation holds details about calls to the GetCodespaceRegionLocation method.
-		GetCodespaceRegionLocation []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
 		}
 		// GetCodespaceRepoSuggestions holds details about calls to the GetCodespaceRepoSuggestions method.
 		GetCodespaceRepoSuggestions []struct {
@@ -238,7 +231,6 @@ type apiClientMock struct {
 	lockDeleteCodespace                sync.RWMutex
 	lockEditCodespace                  sync.RWMutex
 	lockGetCodespace                   sync.RWMutex
-	lockGetCodespaceRegionLocation     sync.RWMutex
 	lockGetCodespaceRepoSuggestions    sync.RWMutex
 	lockGetCodespaceRepositoryContents sync.RWMutex
 	lockGetCodespacesMachines          sync.RWMutex
@@ -395,23 +387,27 @@ func (mock *apiClientMock) EditCodespaceCalls() []struct {
 }
 
 // GetCodespace calls GetCodespaceFunc.
-func (mock *apiClientMock) GetCodespace(ctx context.Context, name string, includeConnection bool) (*api.Codespace, error) {
+func (mock *apiClientMock) GetCodespace(ctx context.Context, name string, username string, organization string, includeConnection bool) (*api.Codespace, error) {
 	if mock.GetCodespaceFunc == nil {
 		panic("apiClientMock.GetCodespaceFunc: method is nil but apiClient.GetCodespace was just called")
 	}
 	callInfo := struct {
 		Ctx               context.Context
 		Name              string
+		Username          string
+		Organization      string
 		IncludeConnection bool
 	}{
 		Ctx:               ctx,
 		Name:              name,
+		Username:          username,
+		Organization:      organization,
 		IncludeConnection: includeConnection,
 	}
 	mock.lockGetCodespace.Lock()
 	mock.calls.GetCodespace = append(mock.calls.GetCodespace, callInfo)
 	mock.lockGetCodespace.Unlock()
-	return mock.GetCodespaceFunc(ctx, name, includeConnection)
+	return mock.GetCodespaceFunc(ctx, name, username, organization, includeConnection)
 }
 
 // GetCodespaceCalls gets all the calls that were made to GetCodespace.
@@ -420,47 +416,20 @@ func (mock *apiClientMock) GetCodespace(ctx context.Context, name string, includ
 func (mock *apiClientMock) GetCodespaceCalls() []struct {
 	Ctx               context.Context
 	Name              string
+	Username          string
+	Organization      string
 	IncludeConnection bool
 } {
 	var calls []struct {
 		Ctx               context.Context
 		Name              string
+		Username          string
+		Organization      string
 		IncludeConnection bool
 	}
 	mock.lockGetCodespace.RLock()
 	calls = mock.calls.GetCodespace
 	mock.lockGetCodespace.RUnlock()
-	return calls
-}
-
-// GetCodespaceRegionLocation calls GetCodespaceRegionLocationFunc.
-func (mock *apiClientMock) GetCodespaceRegionLocation(ctx context.Context) (string, error) {
-	if mock.GetCodespaceRegionLocationFunc == nil {
-		panic("apiClientMock.GetCodespaceRegionLocationFunc: method is nil but apiClient.GetCodespaceRegionLocation was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-	}{
-		Ctx: ctx,
-	}
-	mock.lockGetCodespaceRegionLocation.Lock()
-	mock.calls.GetCodespaceRegionLocation = append(mock.calls.GetCodespaceRegionLocation, callInfo)
-	mock.lockGetCodespaceRegionLocation.Unlock()
-	return mock.GetCodespaceRegionLocationFunc(ctx)
-}
-
-// GetCodespaceRegionLocationCalls gets all the calls that were made to GetCodespaceRegionLocation.
-// Check the length with:
-//     len(mockedapiClient.GetCodespaceRegionLocationCalls())
-func (mock *apiClientMock) GetCodespaceRegionLocationCalls() []struct {
-	Ctx context.Context
-} {
-	var calls []struct {
-		Ctx context.Context
-	}
-	mock.lockGetCodespaceRegionLocation.RLock()
-	calls = mock.calls.GetCodespaceRegionLocation
-	mock.lockGetCodespaceRegionLocation.RUnlock()
 	return calls
 }
 
