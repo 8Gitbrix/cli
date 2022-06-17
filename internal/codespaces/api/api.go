@@ -337,11 +337,22 @@ func findNextPage(linkValue string) string {
 // GetCodespace returns the user codespace based on the provided name.
 // If the codespace is not found, an error is returned.
 // If includeConnection is true, it will return the connection information for the codespace.
-func (a *API) GetCodespace(ctx context.Context, codespaceName string, includeConnection bool) (*Codespace, error) {
+func (a *API) GetCodespace(ctx context.Context, codespaceName string, username string, organization string, includeConnection bool) (*Codespace, error) {
 	resp, err := a.withRetry(func() (*http.Response, error) {
+		var endpoint string
+		var spanName string
+
+		if organization == "" || username == "" {
+			endpoint = "/user/codespaces/" + codespaceName
+			spanName = "/user/codespaces/*"
+		} else {
+			endpoint = fmt.Sprintf("/orgs/%s/members/user/%s/codespaces", organization, username)
+			spanName = "/orgs/*/codespaces"
+		}
+
 		req, err := http.NewRequest(
 			http.MethodGet,
-			a.githubAPI+"/user/codespaces/"+codespaceName,
+			a.githubAPI+endpoint,
 			nil,
 		)
 		if err != nil {
@@ -354,7 +365,7 @@ func (a *API) GetCodespace(ctx context.Context, codespaceName string, includeCon
 			req.URL.RawQuery = q.Encode()
 		}
 		a.setHeaders(req)
-		return a.do(ctx, req, "/user/codespaces/*")
+		return a.do(ctx, req, spanName)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
@@ -370,12 +381,26 @@ func (a *API) GetCodespace(ctx context.Context, codespaceName string, includeCon
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
-	var response Codespace
-	if err := json.Unmarshal(b, &response); err != nil {
-		return nil, fmt.Errorf("error unmarshaling response: %w", err)
-	}
+	if organization != "" && username != "" {
+		var codespaces []Codespace
+		if err := json.Unmarshal(b, &codespaces); err != nil {
+			return nil, fmt.Errorf("error unmarshaling response: %w", err)
+		}
 
-	return &response, nil
+		for i := range codespaces {
+			if codespaces[i].Name == codespaceName {
+				return &codespaces[i], nil
+			}
+		}
+
+		return nil, fmt.Errorf("codespace %s for user %s not found in org %s", codespaceName, username, organization)
+	} else {
+		var response Codespace
+		if err := json.Unmarshal(b, &response); err != nil {
+			return nil, fmt.Errorf("error unmarshaling response: %w", err)
+		}
+		return &response, nil
+	}
 }
 
 // StartCodespace starts a codespace for the user.
@@ -568,6 +593,8 @@ type CreateCodespaceParams struct {
 	VSCSTarget             string
 	VSCSTargetURL          string
 	PermissionsOptOut      bool
+	OrganizationName       string
+	Username               string
 }
 
 // CreateCodespace creates a codespace with the given parameters and returns a non-nil error if it
@@ -592,7 +619,7 @@ func (a *API) CreateCodespace(ctx context.Context, params *CreateCodespaceParams
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
-			codespace, err = a.GetCodespace(ctx, codespace.Name, false)
+			codespace, err = a.GetCodespace(ctx, codespace.Name, params.Username, params.OrganizationName, false)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get codespace: %w", err)
 			}
@@ -855,7 +882,7 @@ func (a *API) EditCodespace(ctx context.Context, codespaceName string, params *E
 }
 
 func (a *API) checkForPendingOperation(ctx context.Context, codespaceName string) (bool, string, error) {
-	codespace, err := a.GetCodespace(ctx, codespaceName, false)
+	codespace, err := a.GetCodespace(ctx, codespaceName, "", "", false)
 	if err != nil {
 		return false, "", err
 	}

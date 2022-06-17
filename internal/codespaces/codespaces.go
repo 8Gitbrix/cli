@@ -19,7 +19,7 @@ func connectionReady(codespace *api.Codespace) bool {
 }
 
 type apiClient interface {
-	GetCodespace(ctx context.Context, name string, includeConnection bool) (*api.Codespace, error)
+	GetCodespace(ctx context.Context, name string, username string, organization string, includeConnection bool) (*api.Codespace, error)
 	StartCodespace(ctx context.Context, name string) error
 }
 
@@ -53,7 +53,7 @@ func ConnectToLiveshare(ctx context.Context, progress progressIndicator, session
 			return nil, errors.New("timed out while waiting for the codespace to start")
 		}
 
-		codespace, err = apiClient.GetCodespace(ctx, codespace.Name, true)
+		codespace, err = apiClient.GetCodespace(ctx, codespace.Name, "", "", true)
 		if err != nil {
 			return nil, fmt.Errorf("error getting codespace: %w", err)
 		}

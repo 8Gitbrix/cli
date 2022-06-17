@@ -300,7 +300,7 @@ func TestRetries(t *testing.T) {
 		githubAPI: srv.URL,
 		client:    &http.Client{},
 	}
-	cs, err := a.GetCodespace(context.Background(), "test", false)
+	cs, err := a.GetCodespace(context.Background(), "test", "", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -320,7 +320,7 @@ func TestRetries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	cs, err = a.GetCodespace(context.Background(), "test", false)
+	cs, err = a.GetCodespace(context.Background(), "test", "", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,6 +496,78 @@ func TestAPI_EditCodespace(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("API.EditCodespace() = %v, want %v", got.DisplayName, tt.want.DisplayName)
+			}
+		})
+	}
+}
+
+func createFakeGetOrgServer(t *testing.T, codespaceName string, organization string, username string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkPath := fmt.Sprintf("/orgs/%s/members/user/%s/codespaces", organization, username)
+
+		if r.URL.Path != checkPath {
+			fmt.Print(r.URL.Path)
+			t.Fatal("Incorrect path")
+		}
+
+		err := json.NewEncoder(w).Encode(Codespace{
+			Name: codespaceName,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		response := Codespace{
+			Name: codespaceName,
+		}
+
+		responseData, _ := json.Marshal(response)
+		fmt.Fprint(w, string(responseData))
+	}))
+}
+
+func TestAPI_GetCodespace(t *testing.T) {
+	type args struct {
+		ctx           context.Context
+		codespaceName string
+		orgName       string
+		userName      string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Codespace
+		wantErr bool
+	}{
+		{
+			name: "success",
+			args: args{
+				ctx:           context.Background(),
+				codespaceName: "testing",
+				orgName:       "bookish",
+				userName:      "user1",
+			},
+			want: &Codespace{
+				Name: "testing",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svr := createFakeGetOrgServer(t, tt.args.codespaceName, tt.args.orgName, tt.args.userName)
+			defer svr.Close()
+
+			a := &API{
+				client:    &http.Client{},
+				githubAPI: svr.URL,
+			}
+			got, err := a.GetCodespace(tt.args.ctx, tt.args.codespaceName, tt.args.userName, tt.args.orgName, false)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("API.EditCodespace() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.GetCodespace() = %v, want %v", got.DisplayName, tt.want.DisplayName)
 			}
 		})
 	}

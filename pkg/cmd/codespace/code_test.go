@@ -112,7 +112,7 @@ func testCodeApiMock() *apiClientMock {
 		PendingOperationDisabledReason: "Some pending operation",
 	}
 	return &apiClientMock{
-		GetCodespaceFunc: func(_ context.Context, name string, _ bool) (*api.Codespace, error) {
+		GetCodespaceFunc: func(_ context.Context, name string, _ string, _ string, _ bool) (*api.Codespace, error) {
 			if name == "disabledCodespace" {
 				return disabledCodespace, nil
 			}
